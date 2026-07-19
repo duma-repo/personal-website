@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>渡码 — AI 应用独立开发者</title>
+<meta name="description" content="把 AI 想法做成真实可用的产品，分享从想法到落地的实践过程。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0c10'/%3E%3Ctext x='32' y='46' font-size='38' text-anchor='middle' fill='%2322d3ee' font-family='PingFang SC, Microsoft YaHei, sans-serif' font-weight='700'%3E%E6%B8%A1%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #11141b;
+    --surface-hover: #161a23;
+    --text: #e6e8ec;
+    --text-secondary: #9aa1ad;
+    --text-muted: #5c6470;
+    --accent: #22d3ee;
+    --accent-dim: rgba(34, 211, 238, 0.12);
+    --green: #4ade80;
+    --border: #1e2330;
+    --radius: 14px;
+    --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--accent); color: #06090c; }
+
+  /* 背景网格 + 光晕 */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(34, 211, 238, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 211, 238, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 90% 60% at 30% 0%, #000 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 30% 0%, #000 40%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow {
+    position: fixed;
+    width: 560px;
+    height: 560px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.07) 0%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.4s;
+  }
+
+  .container {
+    max-width: 1080px;
+    margin: 0;
+    padding: 0 48px 0 120px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 80px 0 110px;
+  }
+
+  .hero .terminal-line {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--green);
+    margin-bottom: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero .terminal-line::before { content: "$"; color: var(--text-muted); }
+
+  .hero .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid rgba(34, 211, 238, 0.25);
+    padding: 7px 16px;
+    border-radius: 6px;
+    margin-bottom: 36px;
+  }
+
+  .hero .eyebrow .pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.5); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(34, 211, 238, 0); }
+  }
+
+  .hero h1 {
+    font-size: clamp(64px, 10vw, 120px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    margin-bottom: 30px;
+  }
+
+  .hero .grad {
+    background: linear-gradient(92deg, var(--accent) 10%, var(--green) 95%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero h1 .caret {
+    color: var(--accent);
+    font-weight: 700;
+    animation: blink 1.1s step-end infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .hero .value-prop {
+    font-size: clamp(22px, 2.8vw, 32px);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 44px;
+  }
+
+  .hero .stats { margin-bottom: 0; }
+
+  /* 首屏分级入场 */
+  .up {
+    opacity: 0;
+    animation: riseIn 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.45s; }
+  .d3 { animation-delay: 0.8s; }
+  .d4 { animation-delay: 1.2s; }
+  .d5 { animation-delay: 1.4s; }
+  .d6 { animation-delay: 2s; }
+  .d7 { animation-delay: 2.4s; }
+
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .scroll-cue {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 34px;
+  }
+
+  .scroll-cue a {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .scroll-cue a:hover { color: var(--accent); }
+
+  .scroll-cue .arrow-down {
+    display: inline-block;
+    animation: bob 1.6s ease-in-out infinite;
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  /* ---------- 首屏右侧轨道图 ---------- */
+  .hero-art {
+    position: absolute;
+    right: 5vw;
+    top: calc(50% - 230px);
+    width: 520px;
+    height: 460px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    animation: artIn 2s ease 0.9s forwards;
+  }
+
+  @keyframes artIn { to { opacity: 0.9; } }
+
+  .orbit-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 50%;
+  }
+  .ring-one {
+    width: 420px;
+    height: 230px;
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    transform: translate(-50%, -50%) rotate(-18deg);
+  }
+  .ring-two {
+    width: 240px;
+    height: 390px;
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    transform: translate(-50%, -50%) rotate(58deg);
+  }
+
+  .orbit-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 72px;
+    height: 72px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #7ee8f5, rgba(34, 211, 238, 0.45) 35%, rgba(34, 211, 238, 0) 72%);
+    box-shadow: 0 0 70px rgba(34, 211, 238, 0.35);
+  }
+
+  /* 灵感之光：沿 ring-one 椭圆轨道绕行一周，回到原点后淡去 */
+  .orbit-comet {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 420px;
+    height: 230px;
+    transform: translate(-50%, -50%) rotate(-18deg);
+  }
+  .orbit-comet i {
+    position: absolute;
+    display: block;
+    width: 84px;
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.5) 55%, rgba(255, 255, 255, 0.95));
+    filter: blur(3px);
+    box-shadow: 0 0 22px rgba(34, 211, 238, 0.55);
+    opacity: 0;
+  }
+  @supports (offset-path: path("M 0 0 L 1 1")) {
+    .orbit-comet i {
+      offset-path: path("M 210 0 A 210 115 0 1 1 209.9 0.001");
+      offset-rotate: auto;
+      animation: comet-travel 3s cubic-bezier(0.22, 0.61, 0.36, 1) 3s forwards;
+    }
+  }
+  @keyframes comet-travel {
+    0%   { offset-distance: 0%; opacity: 0; }
+    8%   { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 1; }
+  }
+
+  @media (max-width: 1100px) {
+    .hero-art { display: none; }
+  }
+
+  /* ---------- Sections ---------- */
+  section { padding: 72px 0; }
+
+  /* ---------- Section head ---------- */
+  .section-head { margin-bottom: 48px; }
+
+  .section-head .kicker {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--green);
+    margin-bottom: 14px;
+  }
+  .section-head .kicker::before { content: "$ "; color: var(--text-muted); }
+
+  .section-head h2 {
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+  }
+
+  /* 滚动渐入 */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ---------- Stats ---------- */
+  .stats {
+    display: flex;
+    gap: 56px;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+
+  .stat .num {
+    font-family: var(--mono);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .stat .num .unit { font-size: 18px; color: var(--accent); }
+  /* 数字预留固定宽度，动画期间只翻动数字，位置不动 */
+  .stat .num .val { display: inline-block; text-align: right; }
+
+  .stat .label {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* ---------- Projects ---------- */
+  .index {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .lang-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .project-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 30px 28px;
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  /* 鼠标跟随光斑 */
+  .project-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(34, 211, 238, 0.1), transparent 65%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .project-card:hover { transform: translateY(-3px); border-color: rgba(34, 211, 238, 0.4); }
+  .project-card:hover::before { opacity: 1; }
+
+  .project-card .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+
+  .project-card .arrow {
+    color: var(--text-muted);
+    transition: transform 0.2s ease, color 0.2s ease;
+    font-size: 18px;
+  }
+  .project-card:hover .arrow { transform: translate(3px, -3px); color: var(--accent); }
+
+  .project-card h3 {
+    font-size: 19px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .project-card p {
+    font-size: 14.5px;
+    color: var(--text-secondary);
+    margin-bottom: 22px;
+    flex: 1;
+  }
+
+  /* ---------- Contact ---------- */
+  .contact-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .contact-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .contact-card:hover { transform: translateY(-3px); border-color: rgba(34, 211, 238, 0.4); }
+
+  .contact-card .icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .contact-card .icon.github { background: #1c2130; color: var(--text); }
+  .contact-card .icon.wechat { background: rgba(74, 222, 128, 0.12); color: var(--green); }
+  .contact-card .icon svg { width: 24px; height: 24px; }
+
+  .contact-card .name { font-size: 16px; font-weight: 600; }
+  .contact-card .desc {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  /* 公众号二维码浮层 */
+  .wechat-card {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .qr-popover {
+    position: absolute;
+    bottom: 100%;
+    left: 12px;
+    padding-bottom: 14px; /* 透明缓冲带：鼠标从卡片移向二维码不落空 */
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+    transform-origin: bottom left;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .qr-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 12px 12px 10px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+    text-align: center;
+  }
+
+  .qr-box img {
+    width: 180px;
+    height: 180px;
+    display: block;
+    border-radius: 8px;
+  }
+
+  .qr-box .qr-tip {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #444;
+    margin-top: 6px;
+  }
+
+  .qr-popover::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 46px;
+    border: 7px solid transparent;
+    border-top-color: #fff;
+  }
+
+  .wechat-card:hover .qr-popover,
+  .wechat-card:focus-within .qr-popover,
+  .wechat-card.active .qr-popover {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  /* ---------- Footer ---------- */
+  footer {
+    padding: 48px 0 44px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+  footer .accent-dot { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .container { padding: 0 24px; }
+    .hero { padding: 88px 0 120px; }
+    .hero .value-prop { font-size: 20px; }
+    .stats { gap: 32px; }
+    .projects-grid, .contact-cards { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .up { opacity: 1; transform: none; transition: none; animation: none; }
+    .hero .eyebrow .pulse, .hero h1 .caret, .scroll-cue .arrow-down { animation: none; }
+    .orbit-comet i { animation: none; opacity: 0; }
+    .hero-art { animation: none; opacity: 0.9; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="glow" id="glow"></div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-art" aria-hidden="true">
+      <div class="orbit-ring ring-one"></div>
+      <div class="orbit-ring ring-two"></div>
+      <div class="orbit-comet" aria-hidden="true"><i></i></div>
+      <div class="orbit-core"></div>
+    </div>
+    <div class="container">
+      <div class="terminal-line up d1">whoami<span style="color: var(--text-secondary)">&nbsp;→&nbsp;duma</span></div>
+      <div class="eyebrow up d2"><span class="pulse"></span>AI 应用独立开发者 · 从想法到产品实践</div>
+      <h1 class="up d3">渡码<span class="caret">_</span></h1>
+      <p class="value-prop up d4">把 AI 想法，做成<span class="grad">真实可用的产品</span></p>
+      <div class="stats up d5">
+        <div class="stat">
+          <div class="num" data-count="10"><span class="val">0</span><span class="unit"> 年</span></div>
+          <div class="label">一线开发经验</div>
+        </div>
+        <div class="stat">
+          <div class="num" data-count="8"><span class="val">0</span><span class="unit"> 万+</span></div>
+          <div class="label">全网粉丝</div>
+        </div>
+        <div class="stat">
+          <div class="num" data-count="4"><span class="val">0</span><span class="unit"> 个</span></div>
+          <div class="label">开源 AI 项目</div>
+        </div>
+      </div>
+    </div>
+    <div class="scroll-cue up d7">
+      <div class="container">
+        <a href="#projects"><span class="arrow-down">↓</span> 向下滚动，了解更多</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Projects -->
+  <section class="projects" id="projects">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">ls ~/projects</div>
+        <h2>代表作品</h2>
+      </div>
+
+      <div class="projects-grid">
+        <a class="project-card reveal" href="https://github.com/duma-repo/ai_code_reader" target="_blank" rel="noopener">
+          <div class="card-top"><span class="index">01</span><span class="arrow">↗</span></div>
+          <h3>AI 项目阅读器</h3>
+          <p>帮助开发者更高效地理解和阅读 AI 项目，快速看懂陌生代码库的结构与核心逻辑。</p>
+          <div class="meta"><span><span class="lang-dot" style="background:#3572A5"></span>Python</span><span>duma-repo/ai_code_reader</span></div>
+        </a>
+        <a class="project-card reveal" href="https://github.com/duma-repo/dumaai" target="_blank" rel="noopener">
+          <div class="card-top"><span class="index">02</span><span class="arrow">↗</span></div>
+          <h3>dumaai</h3>
+          <p>渡码开源 AI 实战项目合集，与抖音、B站、公众号内容同步更新。</p>
+          <div class="meta"><span>duma-repo/dumaai</span></div>
+        </a>
+        <a class="project-card reveal" href="https://github.com/duma-repo/academi-kit" target="_blank" rel="noopener">
+          <div class="card-top"><span class="index">03</span><span class="arrow">↗</span></div>
+          <h3>AI 写论文助手</h3>
+          <p>面向论文写作场景的 AI 助手，辅助学术写作全流程。</p>
+          <div class="meta"><span><span class="lang-dot" style="background:#3572A5"></span>Python</span><span>duma-repo/academi-kit</span></div>
+        </a>
+        <a class="project-card reveal" href="https://github.com/duma-repo/chat-algo" target="_blank" rel="noopener">
+          <div class="card-top"><span class="index">04</span><span class="arrow">↗</span></div>
+          <h3>AI 算法助手</h3>
+          <p>基于大模型的算法与数据结构学习应用，把刷题变成对话。</p>
+          <div class="meta"><span><span class="lang-dot" style="background:#3572A5"></span>Python</span><span>duma-repo/chat-algo</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">cat contact.md</div>
+        <h2>找到我</h2>
+      </div>
+      <div class="contact-cards">
+        <a class="contact-card reveal" href="https://github.com/duma-repo" target="_blank" rel="noopener">
+          <div class="icon github">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .3.2.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+          </div>
+          <div>
+            <div class="name">GitHub</div>
+            <div class="desc">github.com/duma-repo</div>
+          </div>
+        </a>
+        <div class="contact-card wechat-card reveal" tabindex="0" aria-label="微信公众号「渡码」，悬停或点按显示二维码">
+          <div class="qr-popover">
+            <div class="qr-box">
+              <img src="wechat-qr.png" alt="渡码微信公众号二维码">
+              <div class="qr-tip">微信扫码关注</div>
+            </div>
+          </div>
+          <div class="icon wechat">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.69 2C4.44 2 1 4.94 1 8.57c0 2.06 1.12 3.9 2.86 5.11l-.72 2.17 2.52-1.26c.63.17 1.29.28 1.98.31a5.9 5.9 0 0 1-.26-1.72c0-3.54 3.43-6.4 7.66-6.4.24 0 .48.01.72.03C15.05 3.9 12.14 2 8.69 2zm-2.3 3.4a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9zm4.6 0a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9zM16.6 8.5C13.06 8.5 10.2 10.96 10.2 14c0 3.04 2.86 5.5 6.4 5.5.74 0 1.44-.11 2.1-.3L20.8 20.25l-.6-1.8A5.32 5.32 0 0 0 23 14c0-3.04-2.87-5.5-6.4-5.5zm-2.1 2.85a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zm4.2 0a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>
+          </div>
+          <div>
+            <div class="name">微信公众号</div>
+            <div class="desc">扫码或搜索「渡码」关注</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <span class="accent-dot">©</span> 渡码 · 把 AI 想法做成真实可用的产品
+    </div>
+  </footer>
+
+<script>
+  // 1. 滚动渐入
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // 2. 数字滚动
+  function animateCount(el) {
+    const target = +el.dataset.count;
+    const valEl = el.querySelector('.val');
+    // 提前把宽度锁定为最终值的宽度（mono 字体下 1 个字符 = 1ch），避免动画中左右晃动
+    valEl.style.minWidth = String(target).length + 'ch';
+    const duration = 1200;
+    const start = performance.now();
+    (function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 4);
+      valEl.textContent = String(Math.round(target * eased));
+      if (p < 1) requestAnimationFrame(tick);
+    })(start);
+  }
+  const statObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        // 数字块一开始显形就起跑，避免出现静止的全 0 状态
+        const base = e.target.classList.contains('up') ? 1500 : 0;
+        e.target.querySelectorAll('.num').forEach((el, i) => {
+          setTimeout(() => animateCount(el), base + i * 150);
+        });
+        statObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.4 });
+  document.querySelectorAll('.stats').forEach(el => statObserver.observe(el));
+
+  // 3. 卡片鼠标跟随光斑
+  document.querySelectorAll('.project-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
+  });
+
+  // 4. 全局光晕跟随鼠标
+  const glow = document.getElementById('glow');
+  document.addEventListener('mousemove', e => {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
+  });
+
+  // 5. 公众号二维码：触屏设备点按切换，点击其他区域关闭
+  const wechatCard = document.querySelector('.wechat-card');
+  wechatCard.addEventListener('click', () => wechatCard.classList.toggle('active'));
+  document.addEventListener('click', e => {
+    if (!wechatCard.contains(e.target)) wechatCard.classList.remove('active');
+  });
+  wechatCard.addEventListener('keydown', e => {
+    if (e.key === 'Escape') wechatCard.classList.remove('active');
+  });
+</script>
+</body>
+</html>
